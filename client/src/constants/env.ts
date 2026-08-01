@@ -23,6 +23,9 @@ export const env = {
   /** Base URL for the avatar generation API */
   AVATAR_API_URL:
     import.meta.env.VITE_AVATAR_API_URL ?? 'https://ui-avatars.com/api',
+  /** Base URL for the Spring Boot authentication service */
+  AUTH_API_URL:
+    import.meta.env.VITE_AUTH_API_URL ?? 'http://localhost:8081/api/auth',
   /** Google Fonts CSS URL */
   GOOGLE_FONTS_URL:
     import.meta.env.VITE_GOOGLE_FONTS_URL ?? 'https://fonts.googleapis.com',

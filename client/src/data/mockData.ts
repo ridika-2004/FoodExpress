@@ -1,4 +1,4 @@
-export type UserRole = 'user' | 'admin' | 'deliveryman';
+export type UserRole = 'user' | 'restaurant' | 'deliveryman';
 
 export interface AppUser {
   id: string;
@@ -8,7 +8,7 @@ export interface AppUser {
   avatar: string;
   role: UserRole;
   isAvailable?: boolean; // For deliverymen
-  restaurantId?: string; // For admin/restaurant owners
+  restaurantId?: string; // For restaurant owners
 }
 
 export interface Restaurant {
@@ -242,7 +242,7 @@ export const menuItems: Record<string, MenuItem[]> = {
   ],
 };
 
-// All orders — admin sees these
+// All orders — restaurant owners see these
 export const allOrders: Order[] = [
   {
     id: 'FD-2024-001',
@@ -333,25 +333,9 @@ export const allOrders: Order[] = [
 // For regular users, their orders (subset)
 export const orders: Order[] = allOrders.slice(0, 2);
 
-// Mock users
-export const users: AppUser[] = [
-  {
-    id: 'u1',
-    name: 'Ridika Naznin',
-    email: 'ridika@example.com',
-    phone: '+880 1234 567890',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop',
-    role: 'user',
-  },
-  {
-    id: 'admin1',
-    name: 'Admin User',
-    email: 'admin@foodexpress.com',
-    phone: '+63 911 111 1111',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop',
-    role: 'admin',
-    restaurantId: '1',
-  },
+// Delivery fleet shown to restaurant owners for order assignment.
+// These are NOT authenticatable accounts — authentication comes only from the backend.
+export const deliverymen: AppUser[] = [
   {
     id: 'dm1',
     name: 'John Cruz',
@@ -371,16 +355,3 @@ export const users: AppUser[] = [
     isAvailable: true,
   },
 ];
-
-export const user = {
-  name: 'Ridika Naznin',
-  email: 'ridika@example.com',
-  phone: '+880 1234 567890',
-  avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop',
-  addresses: [
-    { id: 'a1', label: 'Home', address: '123 Main Street, Apt 4B, Downtown', isDefault: true },
-    { id: 'a2', label: 'Office', address: '456 Business Ave, 12th Floor, Central Biz Park' },
-  ],
-};
-
-export const deliverymen = users.filter(u => u.role === 'deliveryman');

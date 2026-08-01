@@ -32,8 +32,8 @@ export default function App() {
                 <Route path="/cart" element={<CartPage />} />
                 <Route path="/checkout" element={<CheckoutPage />} />
                 <Route path="/orders" element={<OrdersPage />} />
-                <Route path="/admin/deliveries" element={<AdminDeliveriesPage />} />
-                <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+                <Route path="/restaurant/deliveries" element={<AdminDeliveriesPage />} />
+                <Route path="/restaurant/dashboard" element={<AdminDashboardPage />} />
                 <Route path="/deliveryman" element={<DeliverymanDashboardPage />} />
               </Routes>
             </main>

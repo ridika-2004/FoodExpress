@@ -215,7 +215,7 @@ export default function DeliverymanDashboardPage() {
             </h3>
             <p className="text-sm text-foreground-muted mt-1">
               {activeTab === 'active'
-                ? 'You\'ll see new orders here once the admin assigns them to you'
+                ? 'You\'ll see new orders here once the restaurant assigns them to you'
                 : 'Your completed deliveries will show up here'}
             </p>
           </div>

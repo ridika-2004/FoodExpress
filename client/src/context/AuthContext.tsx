@@ -1,57 +1,112 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { AppUser, UserRole } from '../data/mockData';
-import { users } from '../data/mockData';
-import { env } from '../constants/env';
+import * as authApi from '../api/authApi';
+import { ApiError } from '../api/authApi';
+
+const TOKEN_KEY = 'foodexpress_auth_token';
+
+export interface AuthResult {
+  success: boolean;
+  error?: string;
+}
 
 interface AuthContextValue {
   user: AppUser | null;
   isLoggedIn: boolean;
   role: UserRole | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, phone: string, password: string, role: UserRole) => Promise<boolean>;
+  isCheckingSession: boolean;
+  login: (email: string, password: string) => Promise<AuthResult>;
+  register: (name: string, email: string, phone: string, password: string, secretCode: string) => Promise<AuthResult>;
   logout: () => void;
   updateUser: (updates: Partial<AppUser>) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  // Start logged in as the admin user for demo purposes
-  const [user, setUser] = useState<AppUser | null>(users[1]);
+/** Derive the role from the registration secret code (mirrors the backend). */
+function roleFromSecretCode(code: string): UserRole | null {
+  const c = (code ?? '').trim().toLowerCase();
+  if (c === 'restaurant') return 'restaurant';
+  if (c === 'delivery') return 'deliveryman';
+  if (c === '') return 'user';
+  return null;
+}
 
-  const login = useCallback(async (email: string, _password: string): Promise<boolean> => {
-    // Simulated login — find user by email
-    const found = users.find(u => u.email === email);
-    if (found) {
-      setUser(found);
-      return true;
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+
+  // Restore session from stored token
+  useEffect(() => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) {
+      setIsCheckingSession(false);
+      return;
     }
-    return false;
+    authApi
+      .me(token)
+      .then(apiUser => setUser(apiUser))
+      .catch(() => {
+        // Token invalid or backend offline — start logged out
+        localStorage.removeItem(TOKEN_KEY);
+      })
+      .finally(() => setIsCheckingSession(false));
+  }, []);
+
+  const login = useCallback(async (email: string, password: string): Promise<AuthResult> => {
+    try {
+      const data = await authApi.login({ email, password });
+      localStorage.setItem(TOKEN_KEY, data.token);
+      setUser(data.user);
+      return { success: true };
+    } catch (e) {
+      // Real API error (bad credentials, validation, …)
+      if (e instanceof ApiError) {
+        return { success: false, error: e.message };
+      }
+      // Network error → backend unreachable. No mock fallback — auth is backend-only.
+      return {
+        success: false,
+        error: "Can't reach the authentication service. Please try again in a moment.",
+      };
+    }
   }, []);
 
   const register = useCallback(async (
-    name: string, email: string, phone: string, _password: string, role: UserRole
-  ): Promise<boolean> => {
-    // Simulated registration — create a new user object
-    const newUser: AppUser = {
-      id: `u${Date.now()}`,
-      name,
-      email,
-      phone,
-      avatar: `${env.AVATAR_API_URL}/?name=${encodeURIComponent(name)}&background=ef4444&color=fff&size=200`,
-      role,
-      isAvailable: role === 'deliveryman' ? true : undefined,
-    };
-    setUser(newUser);
-    return true;
+    name: string, email: string, phone: string, password: string, secretCode: string,
+  ): Promise<AuthResult> => {
+    const role = roleFromSecretCode(secretCode);
+    if (!role) {
+      return { success: false, error: 'Invalid secret code. Use "restaurant" or "delivery".' };
+    }
+
+    try {
+      const data = await authApi.register({
+        name, email, phone, password,
+        secretCode: secretCode.trim() || undefined,
+      });
+      localStorage.setItem(TOKEN_KEY, data.token);
+      setUser(data.user);
+      return { success: true };
+    } catch (e) {
+      if (e instanceof ApiError) {
+        return { success: false, error: e.message };
+      }
+      // Network error → backend unreachable. No mock fallback — auth is backend-only.
+      return {
+        success: false,
+        error: "Can't reach the authentication service. Please try again in a moment.",
+      };
+    }
   }, []);
 
   const logout = useCallback(() => {
+    localStorage.removeItem(TOKEN_KEY);
     setUser(null);
   }, []);
 
   const updateUser = useCallback((updates: Partial<AppUser>) => {
-    setUser(prev => prev ? { ...prev, ...updates } : prev);
+    setUser(prev => (prev ? { ...prev, ...updates } : prev));
   }, []);
 
   return (
@@ -59,6 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       isLoggedIn: user !== null,
       role: user?.role ?? null,
+      isCheckingSession,
       login,
       register,
       logout,

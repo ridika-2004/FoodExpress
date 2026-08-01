@@ -14,11 +14,11 @@ export default function Header() {
 
   // Role-based navigation links
   const navLinks = [
-    { label: 'Home', path: '/', roles: ['user', 'admin', 'deliveryman', 'guest'] },
+    { label: 'Home', path: '/', roles: ['user', 'restaurant', 'deliveryman', 'guest'] },
     { label: 'Restaurants', path: '/restaurants', roles: ['user', 'guest'] },
     { label: 'My Orders', path: '/orders', roles: ['user'] },
     { label: 'Deliveries', path: '/deliveryman', roles: ['deliveryman'] },
-    { label: 'Dashboard', path: '/admin/dashboard', roles: ['admin'] },
+    { label: 'Dashboard', path: '/restaurant/dashboard', roles: ['restaurant'] },
   ];
 
   const filteredLinks = navLinks.filter(link =>
@@ -32,7 +32,7 @@ export default function Header() {
   };
 
   const getRoleBadge = () => {
-    if (role === 'admin') return { label: 'Admin', classes: 'bg-purple-100 text-purple-700' };
+    if (role === 'restaurant') return { label: 'Restaurant', classes: 'bg-primary/10 text-primary' };
     if (role === 'deliveryman') return { label: 'Delivery', classes: 'bg-primary/10 text-primary' };
     return null;
   };
@@ -155,10 +155,10 @@ export default function Header() {
                             Dashboard
                           </Link>
                         )}
-                        {role === 'admin' && (
+                        {role === 'restaurant' && (
                           <>
                             <Link
-                              to="/admin/dashboard"
+                              to="/restaurant/dashboard"
                               onClick={() => setIsUserMenuOpen(false)}
                               className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors duration-200"
                             >
@@ -166,7 +166,7 @@ export default function Header() {
                               Restaurant Dashboard
                             </Link>
                             <Link
-                              to="/admin/deliveries"
+                              to="/restaurant/deliveries"
                               onClick={() => setIsUserMenuOpen(false)}
                               className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-muted transition-colors duration-200"
                             >

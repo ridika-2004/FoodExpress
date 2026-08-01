@@ -1,0 +1,22 @@
+# Auto-detect text files and normalize line endings
+* text=auto
+
+# Source files
+*.java text diff=java
+*.xml text
+*.yml text
+*.yaml text
+*.properties text
+*.json text
+*.md text
+*.sh text eol=lf
+
+# Binaries
+*.class binary
+*.jar binary
+*.war binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.zip binary

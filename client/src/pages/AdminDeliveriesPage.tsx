@@ -82,7 +82,7 @@ export default function AdminDeliveriesPage() {
         <div className="flex items-center gap-3 px-4 py-2 bg-primary/5 rounded-xl">
           <User size={16} className="text-primary" />
           <span className="text-sm font-medium text-foreground">{user?.name}</span>
-          <span className="text-xs px-2 py-0.5 bg-primary text-white rounded-full font-semibold">Admin</span>
+          <span className="text-xs px-2 py-0.5 bg-primary text-white rounded-full font-semibold">Restaurant</span>
         </div>
       </div>
 
