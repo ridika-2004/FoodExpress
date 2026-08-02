@@ -44,21 +44,29 @@ export interface MenuItemResponse extends Omit<MenuItem, 'id'> {
 }
 
 export async function getRestaurants(): Promise<Restaurant[]> {
-  const data = await request<RestaurantResponse[]>('');
+  const data = await request<any[]>('');
   return data.map(r => ({
     ...r,
     id: r.restaurantId,
+    isOpen: r.isOpen ?? r.open ?? false,
+    isPromoted: r.isPromoted ?? r.promoted ?? false,
+    categories: r.categories || [],
   }));
 }
 
 export async function getRestaurantById(id: string): Promise<Restaurant & { menuItems: MenuItem[] }> {
-  const data = await request<RestaurantResponse>(`/${id}`);
+  const data = await request<any>(`/${id}`);
   return {
     ...data,
     id: data.restaurantId,
-    menuItems: data.menuItems ? data.menuItems.map(m => ({
+    isOpen: data.isOpen ?? data.open ?? false,
+    isPromoted: data.isPromoted ?? data.promoted ?? false,
+    categories: data.categories || [],
+    menuItems: data.menuItems ? data.menuItems.map((m: any) => ({
       ...m,
       id: m.menuItemId,
+      isPopular: m.isPopular ?? m.popular ?? false,
+      isVegetarian: m.isVegetarian ?? m.vegetarian ?? false,
     })) : []
   };
 }
