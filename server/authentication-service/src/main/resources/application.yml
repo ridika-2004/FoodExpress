@@ -3,10 +3,6 @@ server:
 spring:
   application:
     name: AUTHENTICATION-SERVICE
-  data:
-    mongodb:
-      uri: mongodb+srv://zannatuladonsabiha_db_user:7qaIAdkImgkTShuC@cluster0.l0wixyx.mongodb.net/?appName=Cluster0
-      database: auth_db
 
 eureka:
   client:

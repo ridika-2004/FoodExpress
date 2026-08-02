@@ -14,10 +14,10 @@
     </parent>
 
     <groupId>com.example</groupId>
-    <artifactId>employee-service</artifactId>
+    <artifactId>authentication-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>employee-service</name>
-    <description>Employee Microservice</description>
+    <name>authentication-service</name>
+    <description>Authentication Microservice</description>
 
     <properties>
         <java.version>17</java.version>
