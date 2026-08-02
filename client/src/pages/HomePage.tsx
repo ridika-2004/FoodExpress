@@ -1,7 +1,10 @@
 import { Link } from 'react-router-dom';
 import { Search, Bike, Clock, ShieldCheck, Star, ChevronRight, ArrowRight } from 'lucide-react';
 import RestaurantCard from '../components/RestaurantCard';
-import { categories, restaurants } from '../data/mockData';
+import { useState, useEffect } from 'react';
+import { categories } from '../data/mockData';
+import { getRestaurants } from '../api/restaurantApi';
+import type { Restaurant } from '../data/mockData';
 
 const features = [
   { icon: Bike, title: 'Fast Delivery', desc: '30 min average delivery time' },
@@ -9,9 +12,17 @@ const features = [
   { icon: ShieldCheck, title: 'Safe Payment', desc: 'Secure payment processing' },
 ];
 
-const promoted = restaurants.filter(r => r.isPromoted);
-
 export default function HomePage() {
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getRestaurants().then(setRestaurants).finally(() => setLoading(false));
+  }, []);
+
+  const promoted = restaurants.filter(r => r.isPromoted);
+
+  if (loading) return <div className="p-12 text-center">Loading...</div>;
   return (
     <div>
       {/* Hero Section */}

@@ -1,12 +1,12 @@
 server:
-  port: 9001
+  port: 9002
 spring:
   application:
-    name: AUTHENTICATION-SERVICE
+    name: RESTAURANT-SERVICE
   data:
     mongodb:
       uri: mongodb+srv://zannatuladonsabiha_db_user:7qaIAdkImgkTShuC@cluster0.l0wixyx.mongodb.net/?appName=Cluster0
-      database: auth_db
+      database: foodexpress_restaurant
 
 eureka:
   client:

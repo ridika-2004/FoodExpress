@@ -16,7 +16,7 @@ cd server/authentication-service
 ./mvnw spring-boot:run
 ```
 
-The service starts on **http://localhost:8081**.
+The service starts on **http://localhost:9001**.
 
 ## API Endpoints
 
@@ -62,5 +62,5 @@ Get current user profile (requires `Authorization: Bearer <token>` header).
 
 ## Connecting from Frontend
 
-The frontend expects the auth API at `http://localhost:8081/api/auth`.
-Set `VITE_AUTH_API_URL=http://localhost:8081/api/auth` in `.env` in the frontend project.
+The frontend expects the auth API at `http://localhost:9001/api/auth`.
+Set `VITE_AUTH_API_URL=http://localhost:9001/api/auth` in `.env` in the frontend project.

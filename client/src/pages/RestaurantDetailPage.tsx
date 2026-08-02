@@ -1,18 +1,31 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Star, Clock, Bike, Plus, Minus, ShoppingCart, Check, Leaf } from 'lucide-react';
-import { restaurants, menuItems } from '../data/mockData';
+import { getRestaurantById } from '../api/restaurantApi';
+import type { Restaurant, MenuItem } from '../data/mockData';
 import { useCart } from '../context/CartContext';
 
 export default function RestaurantDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const restaurant = restaurants.find(r => r.id === id);
   const { addItem, items, updateQuantity, itemCount } = useCart();
 
+  const [restaurant, setRestaurant] = useState<Restaurant & { menuItems: MenuItem[] } | null>(null);
+  const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('All');
   const [addedAnimation, setAddedAnimation] = useState<string | null>(null);
 
-  const menu = id ? menuItems[id] || [] : [];
+  useEffect(() => {
+    if (id) {
+      getRestaurantById(id)
+        .then(setRestaurant)
+        .catch(() => setRestaurant(null))
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
+  }, [id]);
+
+  const menu = restaurant?.menuItems || [];
   const categories = useMemo(() => ['All', ...new Set(menu.map(i => i.category))], [menu]);
 
   const filtered = activeCategory === 'All' ? menu : menu.filter(i => i.category === activeCategory);
@@ -27,6 +40,10 @@ export default function RestaurantDetailPage() {
   const getItemQuantity = (menuItemId: string) => {
     return items.find(i => i.menuItem.id === menuItemId)?.quantity || 0;
   };
+
+  if (loading) {
+    return <div className="min-h-[60vh] flex flex-col items-center justify-center">Loading...</div>;
+  }
 
   if (!restaurant) {
     return (

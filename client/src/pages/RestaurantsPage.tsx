@@ -1,14 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, SlidersHorizontal } from 'lucide-react';
 import RestaurantCard from '../components/RestaurantCard';
-import { restaurants, categories } from '../data/mockData';
+import { categories } from '../data/mockData';
+import { getRestaurants } from '../api/restaurantApi';
+import type { Restaurant } from '../data/mockData';
 
 const sortOptions = ['Popular', 'Rating', 'Delivery Time', 'Min. Order'];
 
 export default function RestaurantsPage() {
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [activeSort, setActiveSort] = useState('Popular');
+
+  useEffect(() => {
+    getRestaurants().then(setRestaurants).finally(() => setLoading(false));
+  }, []);
 
   const filtered = restaurants.filter(r => {
     const matchesSearch = r.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -25,7 +33,11 @@ export default function RestaurantsPage() {
         <p className="text-foreground-muted mt-1">Discover the best food near you</p>
       </div>
 
-      {/* Search & Filter */}
+      {loading && <div className="mt-8 text-center">Loading...</div>}
+      
+      {!loading && (
+        <>
+          {/* Search & Filter */}
       <div className="mt-6 flex flex-col sm:flex-row gap-3 animate-slide-up">
         <div className="relative flex-1">
           <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground-muted" />
@@ -107,6 +119,8 @@ export default function RestaurantsPage() {
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }
