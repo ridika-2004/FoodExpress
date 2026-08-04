@@ -29,6 +29,8 @@ export const env = {
   /** Base URL for the Spring Boot restaurant service */
   RESTAURANT_API_URL:
     import.meta.env.VITE_RESTAURANT_API_URL ?? 'http://localhost:9002/api/restaurants',
+  CART_API_URL:
+  import.meta.env.VITE_CART_API_URL ?? "http://localhost:9003/api/cart",
   /** Google Fonts CSS URL */
   GOOGLE_FONTS_URL:
     import.meta.env.VITE_GOOGLE_FONTS_URL ?? 'https://fonts.googleapis.com',

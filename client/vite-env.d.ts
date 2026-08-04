@@ -1,16 +1,22 @@
 /// <reference types="vite/client" />
 /// <reference types="vite-plugin-svgr/client" />
 
-declare module '*.svg?react' {
-  import * as React from 'react';
-  export const ReactComponent: React.FunctionComponent<React.SVGProps<SVGSVGElement>>;
-  const src: string;
-  export default src;
+interface ImportMetaEnv {
+  readonly VITE_AUTH_API_URL: string;
+  readonly VITE_RESTAURANT_API_URL: string;
+  readonly VITE_CART_API_URL: string;
+
+  readonly VITE_APP_NAME: string;
+  readonly VITE_APP_DESCRIPTION: string;
+  readonly VITE_SUPPORT_EMAIL: string;
+  readonly VITE_SUPPORT_PHONE: string;
+  readonly VITE_PORT: string;
+  readonly VITE_ALLOWED_HOSTS: string;
+  readonly VITE_AVATAR_API_URL: string;
+  readonly VITE_GOOGLE_FONTS_URL: string;
+  readonly VITE_GOOGLE_FONTS_STATIC_URL: string;
 }
 
-declare module '*.svg?import&react' {
-  import * as React from 'react';
-  export const ReactComponent: React.FunctionComponent<React.SVGProps<SVGSVGElement>>;
-  const src: string;
-  export default src;
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
 }
