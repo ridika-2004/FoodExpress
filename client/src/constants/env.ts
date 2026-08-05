@@ -16,7 +16,7 @@ export const env = {
   SUPPORT_PHONE: import.meta.env.VITE_SUPPORT_PHONE ?? '+1 (555) 000-0000',
 
   /** Dev server port */
-  PORT: import.meta.env.VITE_PORT ?? '5173',
+  PORT: '5173',
   /** Whether to allow all hosts in dev */
   ALLOWED_HOSTS: import.meta.env.VITE_ALLOWED_HOSTS === 'true',
 
@@ -25,12 +25,10 @@ export const env = {
     import.meta.env.VITE_AVATAR_API_URL ?? 'https://ui-avatars.com/api',
   /** Base URL for the Spring Boot authentication service */
   AUTH_API_URL:
-    import.meta.env.VITE_AUTH_API_URL ?? 'http://localhost:9001/api/auth',
+    import.meta.env.VITE_AUTH_API_URL ?? '/api/auth',
   /** Base URL for the Spring Boot restaurant service */
   RESTAURANT_API_URL:
-    import.meta.env.VITE_RESTAURANT_API_URL ?? 'http://localhost:9002/api/restaurants',
-  CART_API_URL:
-  import.meta.env.VITE_CART_API_URL ?? "http://localhost:9003/api/cart",
+    import.meta.env.VITE_RESTAURANT_API_URL ?? '/api/restaurants',
   /** Google Fonts CSS URL */
   GOOGLE_FONTS_URL:
     import.meta.env.VITE_GOOGLE_FONTS_URL ?? 'https://fonts.googleapis.com',

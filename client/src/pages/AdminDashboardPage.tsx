@@ -1,6 +1,13 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Store, ChefHat, Package } from 'lucide-react';
-import { restaurants, menuItems, allOrders, deliverymen, type MenuItem, type MenuItemInput, type Order, type Restaurant } from '../data/mockData';
+import {
+  restaurants, menuItems,
+  type MenuItem, type MenuItemInput, type Restaurant,
+} from '../data/mockData';
+import {
+  getOrders, getDeliverymen, assignDeliveryman, updateOrderStatus,
+  type DeliveryOrder, type Deliveryman,
+} from '../api/deliveryApi';
 import { useAuth } from '../context/AuthContext';
 import RestaurantInfoCard from '../components/admin/RestaurantInfoCard';
 import MenuGrid from '../components/admin/MenuGrid';
@@ -19,27 +26,55 @@ export default function AdminDashboardPage() {
   const { user } = useAuth();
   const restaurantId = user?.restaurantId || '1';
 
+  // ── Restaurant / Menu (still managed locally) ──────────────
   const [restaurant, setRestaurant] = useState<Restaurant | undefined>(
     () => restaurants.find(r => r.id === restaurantId)
   );
   const [menu, setMenu] = useState<MenuItem[]>(() => menuItems[restaurantId] || []);
-  const [orders, setOrders] = useState<Order[]>(
-    () => allOrders.filter(o => o.restaurantId === restaurantId)
-  );
+
+  // ── Orders / Deliverymen (real API) ────────────────────────
+  const [orders, setOrders] = useState<DeliveryOrder[]>([]);
+  const [deliverymen, setDeliverymen] = useState<Deliveryman[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
+
   const [activeTab, setActiveTab] = useState<'menu' | 'orders'>('menu');
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<MenuItemInput>(INITIAL_FORM);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<DeliveryOrder | null>(null);
   const [orderFilter, setOrderFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showRestaurantForm, setShowRestaurantForm] = useState(false);
+
+  // Fetch orders + deliverymen when the orders tab is opened
+  const fetchOrdersData = useCallback(async () => {
+    setOrdersLoading(true);
+    setOrdersError(null);
+    try {
+      const [allOrders, dms] = await Promise.all([getOrders(), getDeliverymen()]);
+      // Filter to only this restaurant's orders
+      setOrders(allOrders.filter(o => o.restaurantId === restaurantId));
+      setDeliverymen(dms);
+    } catch (err: any) {
+      setOrdersError(err?.message ?? 'Failed to load orders');
+    } finally {
+      setOrdersLoading(false);
+    }
+  }, [restaurantId]);
+
+  useEffect(() => {
+    if (activeTab === 'orders') {
+      fetchOrdersData();
+    }
+  }, [activeTab, fetchOrdersData]);
 
   const filteredOrders = useMemo(() =>
     orders.filter(o => {
       const matchesStatus = orderFilter === 'all' || o.status === orderFilter;
       const matchesSearch = searchQuery === '' ||
         o.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        o.restaurantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         o.deliveryAddress.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesStatus && matchesSearch;
     }),
@@ -47,13 +82,13 @@ export default function AdminDashboardPage() {
   );
 
   const orderStats = useMemo(() => ({
-    pending: orders.filter(o => o.status === 'pending' || o.status === 'confirmed').length,
+    pending:    orders.filter(o => o.status === 'pending' || o.status === 'confirmed').length,
     delivering: orders.filter(o => o.status === 'out_for_delivery').length,
-    delivered: orders.filter(o => o.status === 'delivered').length,
+    delivered:  orders.filter(o => o.status === 'delivered').length,
     unassigned: orders.filter(o => !o.deliverymanId && !['delivered', 'cancelled'].includes(o.status)).length,
   }), [orders]);
 
-  // --- Menu handlers ---
+  // ── Menu handlers ──────────────────────────────────────────
   const openAddForm = () => {
     setEditingItem(null);
     setForm(INITIAL_FORM);
@@ -76,11 +111,8 @@ export default function AdminDashboardPage() {
 
   const handleSaveMenuItem = () => {
     if (!form.name || !form.description || form.price <= 0) return;
-
     if (editingItem) {
-      setMenu(prev => prev.map(i =>
-        i.id === editingItem.id ? { ...i, ...form } : i
-      ));
+      setMenu(prev => prev.map(i => i.id === editingItem.id ? { ...i, ...form } : i));
     } else {
       const newItem: MenuItem = { id: `${restaurantId}${Date.now()}`, ...form };
       setMenu(prev => [...prev, newItem]);
@@ -93,44 +125,30 @@ export default function AdminDashboardPage() {
     setMenu(prev => prev.filter(i => i.id !== itemId));
   };
 
-  // --- Order handlers ---
-  const handleAssign = (orderId: string, deliverymanId: string) => {
-    const dm = deliverymen.find(d => d.id === deliverymanId);
-    if (!dm) return;
-
-    setOrders(prev =>
-      prev.map(o => {
-        if (o.id !== orderId) return o;
-        return {
-          ...o,
-          deliverymanId: dm.id,
-          driverName: dm.name,
-          driverPhone: dm.phone,
-          driverImage: dm.avatar,
-          status: o.status === 'pending' || o.status === 'confirmed' ? 'out_for_delivery' : o.status,
-        };
-      })
-    );
-    setSelectedOrder(null);
+  // ── Order handlers (real API) ──────────────────────────────
+  const handleAssign = async (orderId: string, deliverymanId: string) => {
+    try {
+      const updated = await assignDeliveryman(orderId, deliverymanId);
+      setOrders(prev => prev.map(o => o.id === updated.id ? updated : o));
+      setSelectedOrder(null);
+    } catch (err: any) {
+      setOrdersError(err?.message ?? 'Failed to assign deliveryman');
+    }
   };
 
-  const handleMarkDelivered = (orderId: string) => {
-    setOrders(prev =>
-      prev.map(o => o.id === orderId ? { ...o, status: 'delivered' as const } : o)
-    );
+  const handleMarkDelivered = async (orderId: string) => {
+    try {
+      const updated = await updateOrderStatus(orderId, 'delivered');
+      setOrders(prev => prev.map(o => o.id === updated.id ? updated : o));
+    } catch (err: any) {
+      setOrdersError(err?.message ?? 'Failed to update order status');
+    }
   };
 
-  // --- Restaurant handlers ---
-  const handleEditRestaurant = () => {
-    if (!restaurant) return;
-    setShowRestaurantForm(true);
-  };
+  // ── Restaurant handlers ────────────────────────────────────
+  const handleSaveRestaurant = (updated: Restaurant) => setRestaurant(updated);
 
-  const handleSaveRestaurant = (updated: Restaurant) => {
-    setRestaurant(updated);
-  };
-
-  // --- Empty state ---
+  // ── Empty state ────────────────────────────────────────────
   if (!restaurant) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center">
@@ -164,7 +182,7 @@ export default function AdminDashboardPage() {
       <RestaurantInfoCard
         restaurant={restaurant}
         menuItemCount={menu.length}
-        onEdit={handleEditRestaurant}
+        onEdit={() => setShowRestaurantForm(true)}
       />
 
       {/* Tabs */}
@@ -206,18 +224,35 @@ export default function AdminDashboardPage() {
       {/* Orders Tab */}
       {activeTab === 'orders' && (
         <div>
-          <OrderStatsCards stats={orderStats} />
-          <OrderFilters
-            activeFilter={orderFilter}
-            searchQuery={searchQuery}
-            onFilterChange={setOrderFilter}
-            onSearchChange={setSearchQuery}
-          />
-          <OrdersTable
-            orders={filteredOrders}
-            onAssign={setSelectedOrder}
-            onMarkDelivered={handleMarkDelivered}
-          />
+          {ordersError && (
+            <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+              {ordersError}
+            </div>
+          )}
+          {ordersLoading ? (
+            <div className="animate-pulse space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {[...Array(4)].map((_, i) => <div key={i} className="h-20 bg-muted rounded-2xl" />)}
+              </div>
+              <div className="h-64 bg-muted rounded-2xl" />
+            </div>
+          ) : (
+            <>
+              <OrderStatsCards stats={orderStats} />
+              <OrderFilters
+                activeFilter={orderFilter}
+                searchQuery={searchQuery}
+                onFilterChange={setOrderFilter}
+                onSearchChange={setSearchQuery}
+              />
+              <OrdersTable
+                orders={filteredOrders}
+                deliverymen={deliverymen}
+                onAssign={setSelectedOrder}
+                onMarkDelivered={handleMarkDelivered}
+              />
+            </>
+          )}
         </div>
       )}
 
@@ -236,6 +271,7 @@ export default function AdminDashboardPage() {
       {selectedOrder && (
         <DeliveryAssignModal
           order={selectedOrder}
+          deliverymen={deliverymen}
           onAssign={handleAssign}
           onClose={() => setSelectedOrder(null)}
         />

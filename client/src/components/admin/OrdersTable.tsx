@@ -1,15 +1,15 @@
 import { Package } from 'lucide-react';
-import type { Order } from '../../data/mockData';
-import { deliverymen } from '../../data/mockData';
+import type { DeliveryOrder, Deliveryman } from '../../api/deliveryApi';
 import { statusConfig } from './constants';
 
 interface OrdersTableProps {
-  orders: Order[];
-  onAssign: (order: Order) => void;
+  orders: DeliveryOrder[];
+  deliverymen: Deliveryman[];
+  onAssign: (order: DeliveryOrder) => void;
   onMarkDelivered: (orderId: string) => void;
 }
 
-export default function OrdersTable({ orders, onAssign, onMarkDelivered }: OrdersTableProps) {
+export default function OrdersTable({ orders, deliverymen, onAssign, onMarkDelivered }: OrdersTableProps) {
   if (orders.length === 0) {
     return (
       <div className="bg-white border border-border rounded-2xl p-12 text-center shadow-sm">
@@ -36,10 +36,15 @@ export default function OrdersTable({ orders, onAssign, onMarkDelivered }: Order
           </thead>
           <tbody>
             {orders.map(order => {
-              const status = statusConfig[order.status];
+              const status = statusConfig[order.status] ?? statusConfig['pending'];
+
+              // Prefer live lookup from deliverymen list; fall back to what's stored on the order
               const assignedDm = order.deliverymanId
                 ? deliverymen.find(d => d.id === order.deliverymanId)
                 : null;
+              const driverName  = assignedDm?.name  ?? order.driverName  ?? null;
+              const driverPhone = assignedDm?.phone ?? order.driverPhone ?? null;
+
               return (
                 <tr
                   key={order.id}
@@ -47,7 +52,7 @@ export default function OrdersTable({ orders, onAssign, onMarkDelivered }: Order
                 >
                   <td className="px-5 py-4">
                     <div>
-                      <p className="font-semibold text-foreground">{order.id}</p>
+                      <p className="font-semibold text-foreground font-mono text-xs">{order.id}</p>
                       <p className="text-xs text-foreground-muted mt-0.5">
                         {new Date(order.createdAt).toLocaleDateString('en-US', {
                           month: 'short',
@@ -61,7 +66,7 @@ export default function OrdersTable({ orders, onAssign, onMarkDelivered }: Order
                   <td className="px-5 py-4">
                     <p className="text-foreground text-sm">{order.items.length} item(s)</p>
                     <p className="text-xs text-foreground-muted mt-0.5">
-                      {order.items.map(i => i.menuItem.name).join(', ').slice(0, 40)}
+                      {order.items.map(i => i.name).join(', ').slice(0, 40)}
                     </p>
                   </td>
                   <td className="px-5 py-4">
@@ -71,10 +76,17 @@ export default function OrdersTable({ orders, onAssign, onMarkDelivered }: Order
                   </td>
                   <td className="px-5 py-4 font-semibold text-foreground">₱{order.total.toLocaleString()}</td>
                   <td className="px-5 py-4">
-                    {assignedDm ? (
+                    {driverName ? (
                       <div className="flex items-center gap-2">
-                        <img src={assignedDm.avatar} alt={assignedDm.name} className="w-7 h-7 rounded-full object-cover" />
-                        <span className="text-sm text-foreground">{assignedDm.name}</span>
+                        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">
+                          {driverName[0]}
+                        </div>
+                        <div>
+                          <p className="text-sm text-foreground">{driverName}</p>
+                          {driverPhone && (
+                            <p className="text-xs text-foreground-muted">{driverPhone}</p>
+                          )}
+                        </div>
                       </div>
                     ) : (
                       <span className="text-xs text-foreground-muted">Not assigned</span>

@@ -37,9 +37,28 @@ export default defineConfig(({ mode }) => {
       }),
     ],
     server: {
-      port: Number(env.VITE_PORT ?? 5173),
-      allowedHosts: env.VITE_ALLOWED_HOSTS === 'true' ? true : undefined,
+      port: 5173,
+      host: '0.0.0.0',
+      allowedHosts: true,
       hmr: false,
+      proxy: {
+        '/api/auth': {
+          target: 'http://localhost:9001',
+          changeOrigin: true,
+        },
+        '/api/restaurants': {
+          target: 'http://localhost:9002',
+          changeOrigin: true,
+        },
+        '/api/cart': {
+          target: 'http://localhost:9003',
+          changeOrigin: true,
+        },
+        '/api/delivery': {
+          target: 'http://localhost:9004',
+          changeOrigin: true,
+        },
+      },
     },
   };
 })

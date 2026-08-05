@@ -1,22 +1,6 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  useMemo,
-  useEffect,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react';
 import type { CartItem, MenuItem } from '../data/mockData';
 import { env } from '../constants/env';
-import { useAuth } from "./AuthContext";
-import {
-  addItem as addItemApi,
-  getCart,
-  updateQuantity as updateQuantityApi,
-  removeItem as removeItemApi,
-  clearCart as clearCartApi,
-} from "../api/cartApi";
 
 interface CartContextValue {
   items: CartItem[];
@@ -36,159 +20,38 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
-  const { user } = useAuth();
 
-  useEffect(() => {
-  if (!user) {
-    setItems([]);
-    return;
-  }
-
-  getCart(user.id)
-    .then(cart => {
-      const mappedItems: CartItem[] = cart.items.map(item => ({
-        restaurantId: cart.restaurantId,
-        restaurantName: cart.restaurantName,
-        quantity: item.quantity,
-        menuItem: {
-          id: item.menuItem.id,
-          name: item.menuItem.name,
-          image: item.menuItem.image,
-          price: item.menuItem.price,
-          description: "",
-          category: "",
-          isPopular: false,
-          isVegetarian: false,
-        },
-      }));
-
-      setItems(mappedItems);
-    })
-    .catch(() => {
-      setItems([]);
+  const addItem = useCallback((menuItem: MenuItem, restaurantId: string, restaurantName: string) => {
+    setItems(prev => {
+      // If cart has items from a different restaurant, clear it first
+      if (prev.length > 0 && prev[0].restaurantId !== restaurantId) {
+        return [{ menuItem, restaurantId, restaurantName, quantity: 1 }];
+      }
+      const existing = prev.find(i => i.menuItem.id === menuItem.id);
+      if (existing) {
+        return prev.map(i =>
+          i.menuItem.id === menuItem.id ? { ...i, quantity: i.quantity + 1 } : i
+        );
+      }
+      return [...prev, { menuItem, restaurantId, restaurantName, quantity: 1 }];
     });
-}, [user]);
+  }, []);
 
-  const addItem = useCallback(
-  async (
-    menuItem: MenuItem,
-    restaurantId: string,
-    restaurantName: string
-  ) => {
-    if (!user) return;
+  const removeItem = useCallback((menuItemId: string) => {
+    setItems(prev => prev.filter(i => i.menuItem.id !== menuItemId));
+  }, []);
 
-    try {
-      const cart = await addItemApi({
-        userId: user.id,
-        restaurantId,
-        restaurantName,
-        menuItemId: menuItem.id,
-        menuItemName: menuItem.name,
-        menuItemImage: menuItem.image,
-        menuItemPrice: menuItem.price,
-        quantity: 1,
-      });
-
-      const mappedItems: CartItem[] = cart.items.map(item => ({
-        restaurantId: cart.restaurantId,
-        restaurantName: cart.restaurantName,
-        quantity: item.quantity,
-        menuItem: {
-          id: item.menuItem.id,
-          name: item.menuItem.name,
-          image: item.menuItem.image,
-          price: item.menuItem.price,
-          description: "",
-          category: "",
-          isPopular: false,
-          isVegetarian: false,
-        },
-      }));
-
-      setItems(mappedItems);
-    } catch (err) {
-      console.error(err);
+  const updateQuantity = useCallback((menuItemId: string, quantity: number) => {
+    if (quantity <= 0) {
+      setItems(prev => prev.filter(i => i.menuItem.id !== menuItemId));
+      return;
     }
-  },
-  [user]
-);
+    setItems(prev =>
+      prev.map(i => (i.menuItem.id === menuItemId ? { ...i, quantity } : i))
+    );
+  }, []);
 
-  const removeItem = useCallback(
-  async (menuItemId: string) => {
-    if (!user) return;
-
-    try {
-      const cart = await removeItemApi(user.id, menuItemId);
-
-      const mappedItems: CartItem[] = cart.items.map(item => ({
-        restaurantId: cart.restaurantId,
-        restaurantName: cart.restaurantName,
-        quantity: item.quantity,
-        menuItem: {
-          id: item.menuItem.id,
-          name: item.menuItem.name,
-          image: item.menuItem.image,
-          price: item.menuItem.price,
-          description: "",
-          category: "",
-          isPopular: false,
-          isVegetarian: false,
-        },
-      }));
-
-      setItems(mappedItems);
-    } catch (err) {
-      console.error(err);
-    }
-  },
-  [user]
-);;
-
-  const updateQuantity = useCallback(
-  async (menuItemId: string, quantity: number) => {
-    if (!user) return;
-
-    try {
-      const cart = await updateQuantityApi(
-        user.id,
-        menuItemId,
-        quantity
-      );
-
-      const mappedItems: CartItem[] = cart.items.map(item => ({
-        restaurantId: cart.restaurantId,
-        restaurantName: cart.restaurantName,
-        quantity: item.quantity,
-        menuItem: {
-          id: item.menuItem.id,
-          name: item.menuItem.name,
-          image: item.menuItem.image,
-          price: item.menuItem.price,
-          description: "",
-          category: "",
-          isPopular: false,
-          isVegetarian: false,
-        },
-      }));
-
-      setItems(mappedItems);
-    } catch (err) {
-      console.error(err);
-    }
-  },
-  [user]
-);
-
-  const clearCart = useCallback(async () => {
-  if (!user) return;
-
-  try {
-    await clearCartApi(user.id);
-    setItems([]);
-  } catch (err) {
-    console.error(err);
-  }
-}, [user]);
+  const clearCart = useCallback(() => setItems([]), []);
 
   const itemCount = useMemo(() => items.reduce((sum, i) => sum + i.quantity, 0), [items]);
   const subtotal = useMemo(() => items.reduce((sum, i) => sum + i.menuItem.price * i.quantity, 0), [items]);
