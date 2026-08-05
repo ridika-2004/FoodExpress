@@ -1,13 +1,14 @@
 server:
-  port: 9003
+  port: 9004
 
 spring:
   application:
-    name: CART-SERVICE
+    name: ORDER-SERVICE
 
   data:
     mongodb:
-      uri: mongodb+srv://zannatuladonsabiha_db_user:7qaIAdkImgkTShuC@cluster0.l0wixyx.mongodb.net/foodexpress_cart?retryWrites=true&w=majority&appName=Cluster0
+      uri: mongodb+srv://zannatuladonsabiha_db_user:7qaIAdkImgkTShuC@cluster0.l0wixyx.mongodb.net/foodexpress_order?retryWrites=true&w=majority&appName=Cluster0
+
 eureka:
   client:
     register-with-eureka: false
