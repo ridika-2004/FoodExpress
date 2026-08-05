@@ -5,17 +5,19 @@ import com.example.delivery_service.dto.StatusUpdateRequest;
 import com.example.delivery_service.entity.Deliveryman;
 import com.example.delivery_service.entity.Order;
 import com.example.delivery_service.service.DeliveryService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/delivery")
-@RequiredArgsConstructor
 public class DeliveryController {
 
     private final DeliveryService deliveryService;
+
+    public DeliveryController(DeliveryService deliveryService) {
+        this.deliveryService = deliveryService;
+    }
 
     // ── Orders ────────────────────────────────────────────────
 

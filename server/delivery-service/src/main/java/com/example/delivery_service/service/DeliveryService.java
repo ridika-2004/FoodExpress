@@ -3,7 +3,6 @@ package com.example.delivery_service.service;
 import com.example.delivery_service.entity.Deliveryman;
 import com.example.delivery_service.entity.Order;
 import com.example.delivery_service.repository.OrderRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -14,15 +13,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.regex.Pattern;
 
 @Service
-@RequiredArgsConstructor
 public class DeliveryService {
 
     private final OrderRepository orderRepository;
-
-    @Qualifier("authMongoTemplate")
     private final MongoTemplate authMongoTemplate;
+
+    public DeliveryService(
+            OrderRepository orderRepository,
+            @Qualifier("authMongoTemplate") MongoTemplate authMongoTemplate) {
+        this.orderRepository = orderRepository;
+        this.authMongoTemplate = authMongoTemplate;
+    }
 
     // ── Orders ────────────────────────────────────────────────
 
@@ -54,8 +58,9 @@ public class DeliveryService {
         order.setDriverName(dm.getName());
         order.setDriverPhone(dm.getPhone());
 
-        // Auto-advance to out_for_delivery when assigned from an early status
-        if ("pending".equals(order.getStatus()) || "confirmed".equals(order.getStatus()) || "preparing".equals(order.getStatus())) {
+        // Auto-advance status when assigned
+        if ("pending".equals(order.getStatus()) || "confirmed".equals(order.getStatus())
+                || "preparing".equals(order.getStatus())) {
             order.setStatus("out_for_delivery");
         }
 
@@ -72,7 +77,9 @@ public class DeliveryService {
     // ── Deliverymen ───────────────────────────────────────────
 
     public List<Deliveryman> getDeliverymen() {
-        Query query = new Query(Criteria.where("role").is("deliveryman"));
+        // Match "DELIVERYMAN" (Java enum name) or "deliveryman" (lowercase) stored in MongoDB
+        Query query = new Query(
+                Criteria.where("role").regex(Pattern.compile("^deliveryman$", Pattern.CASE_INSENSITIVE)));
         return authMongoTemplate.find(query, Deliveryman.class, "users");
     }
 }

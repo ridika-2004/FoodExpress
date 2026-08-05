@@ -3,9 +3,6 @@ server:
 spring:
   application:
     name: RESTAURANT-SERVICE
-  data:
-    mongodb:
-      uri: mongodb+srv://zannatuladonsabiha_db_user:7qaIAdkImgkTShuC@cluster0.l0wixyx.mongodb.net/foodexpress_restaurant?retryWrites=true&w=majority&appName=Cluster0
 
 eureka:
   client:
