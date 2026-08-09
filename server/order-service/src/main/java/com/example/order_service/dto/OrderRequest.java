@@ -26,12 +26,4 @@ public class OrderRequest {
     private String restaurantName;
 
     private List<OrderItemRequest> items;
-
-    private Integer itemCount;
-
-    private Double subtotal;
-
-    private Double deliveryFee;
-
-    private Double total;
 }

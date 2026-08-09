@@ -22,6 +22,9 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
 
+    private static final double DELIVERY_FEE = 60.0;
+    private static final double FREE_DELIVERY_THRESHOLD = 500.0;
+
     // Place Order
     public OrderResponse placeOrder(OrderRequest request) {
 
@@ -39,6 +42,30 @@ public class OrderService {
                         .build())
                 .toList();
 
+        // Calculate item count and subtotal
+        int itemCount = 0;
+        double subtotal = 0.0;
+
+        for (OrderItem item : items) {
+
+            itemCount += item.getQuantity();
+
+            subtotal += item.getMenuItem().getPrice()
+                    * item.getQuantity();
+        }
+
+        // Calculate delivery fee
+        double deliveryFee;
+
+        if (subtotal == 0 || subtotal >= FREE_DELIVERY_THRESHOLD) {
+            deliveryFee = 0.0;
+        } else {
+            deliveryFee = DELIVERY_FEE;
+        }
+
+        // Calculate final total
+        double total = subtotal + deliveryFee;
+
         Order order = Order.builder()
                 .userId(request.getUserId())
                 .customerName(request.getCustomerName())
@@ -47,10 +74,10 @@ public class OrderService {
                 .restaurantId(request.getRestaurantId())
                 .restaurantName(request.getRestaurantName())
                 .items(items)
-                .itemCount(request.getItemCount())
-                .subtotal(request.getSubtotal())
-                .deliveryFee(request.getDeliveryFee())
-                .total(request.getTotal())
+                .itemCount(itemCount)
+                .subtotal(subtotal)
+                .deliveryFee(deliveryFee)
+                .total(total)
                 .status(OrderStatus.PENDING)
                 .createdAt(LocalDateTime.now())
                 .build();
