@@ -69,17 +69,6 @@ export default function CheckoutPage() {
     setError("");
 
     try {
-      /*
-       * Send only order information and items.
-       *
-       * The frontend does NOT send:
-       * - itemCount
-       * - subtotal
-       * - deliveryFee
-       * - total
-       *
-       * These are calculated by the Order Service.
-       */
       const createdOrder = await placeOrder({
         userId: user.id,
 
