@@ -17,7 +17,9 @@ const svgImportPlugin = () => ({
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), "VITE_");
+  loadEnv(mode, process.cwd(), "VITE_");
+
+
 
   return {
     plugins: [
@@ -42,23 +44,13 @@ export default defineConfig(({ mode }) => {
       allowedHosts: true,
       hmr: false,
       proxy: {
-        "/api/auth": {
-          target: "http://localhost:9001",
-          changeOrigin: true,
-        },
-        "/api/restaurants": {
-          target: "http://localhost:9002",
-          changeOrigin: true,
-        },
-        "/api/cart": {
-          target: "http://localhost:9003",
-          changeOrigin: true,
-        },
-        "/api/delivery": {
-          target: "http://localhost:9004",
+        // All backend traffic goes through the API Gateway on port 8080
+        "/api": {
+          target: "http://localhost:8080",
           changeOrigin: true,
         },
       },
+
     },
   };
 });

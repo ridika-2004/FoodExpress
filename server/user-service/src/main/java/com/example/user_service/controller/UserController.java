@@ -1,78 +1,54 @@
 package com.example.user_service.controller;
 
+import com.example.user_service.dto.AvailabilityRequest;
 import com.example.user_service.dto.UserResponse;
-import com.example.user_service.entity.User;
-import com.example.user_service.repository.UserRepository;
-import com.example.user_service.security.JwtUtil;
-import org.springframework.http.HttpStatus;
+import com.example.user_service.service.UserService;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
 
-    private final UserRepository userRepository;
-    private final JwtUtil jwtUtil;
+    private final UserService userService;
 
-    public UserController(UserRepository userRepository, JwtUtil jwtUtil) {
-        this.userRepository = userRepository;
-        this.jwtUtil = jwtUtil;
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
+
+    /** Calling user's own profile. */
+    @GetMapping("/me")
+    public UserResponse getMe(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return userService.getMe(authHeader);
+    }
+
+    /** Calling deliveryman's current availability state. */
+    @GetMapping("/me/availability")
+    public UserResponse getMyAvailability(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return userService.getMyAvailability(authHeader);
     }
 
     /**
-     * Toggle the calling deliveryman's availability.
-     * Only users with role DELIVERYMAN can call this endpoint.
+     * Set (or flip, when no body is sent) the calling deliveryman's availability.
+     * DELIVERYMAN role only.
      */
     @PatchMapping("/me/availability")
-    public UserResponse toggleAvailability(
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
-
-        // ── 1. Validate the Bearer token ──────────────────────
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Missing or invalid Authorization header");
-        }
-        String token = authHeader.substring(7);
-        if (!jwtUtil.isValid(token)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired token");
-        }
-
-        // ── 2. Enforce DELIVERYMAN-only access ────────────────
-        String role = jwtUtil.extractRole(token);
-        if (!"DELIVERYMAN".equalsIgnoreCase(role)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only delivery partners can toggle availability");
-        }
-
-        // ── 3. Load, toggle, save ─────────────────────────────
-        String userId = jwtUtil.extractUserId(token);
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-
-        user.setIsAvailable(!Boolean.TRUE.equals(user.getIsAvailable()));
-        userRepository.save(user);
-
-        return UserResponse.from(user);
+    public UserResponse setMyAvailability(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestBody(required = false) AvailabilityRequest request) {
+        return userService.setMyAvailability(authHeader, request != null ? request.isAvailable() : null);
     }
 
-    /**
-     * Get the calling user's own profile.
-     */
-    @GetMapping("/me")
-    public UserResponse getMe(
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+    /** Deliverymen directory — optionally filtered by availability. */
+    @GetMapping("/deliverymen")
+    public List<UserResponse> getDeliverymen(@RequestParam(required = false) Boolean available) {
+        return userService.getDeliverymen(available);
+    }
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Missing or invalid Authorization header");
-        }
-        String token = authHeader.substring(7);
-        if (!jwtUtil.isValid(token)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired token");
-        }
-
-        String userId = jwtUtil.extractUserId(token);
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-
-        return UserResponse.from(user);
+    @GetMapping("/{id}")
+    public UserResponse getById(@PathVariable String id) {
+        return userService.getById(id);
     }
 }

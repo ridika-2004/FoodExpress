@@ -54,6 +54,13 @@ public class DeliveryService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Deliveryman not found: " + deliverymanId);
         }
 
+        // Availability is owned by the user-service (same users collection).
+        // Refuse assignment when the partner has toggled themselves off duty.
+        if (!Boolean.TRUE.equals(dm.getIsAvailable())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    dm.getName() + " is currently unavailable");
+        }
+
         order.setDeliverymanId(dm.getId());
         order.setDriverName(dm.getName());
         order.setDriverPhone(dm.getPhone());
@@ -76,10 +83,13 @@ public class DeliveryService {
 
     // ── Deliverymen ───────────────────────────────────────────
 
-    public List<Deliveryman> getDeliverymen() {
+    public List<Deliveryman> getDeliverymen(Boolean available) {
         // Match "DELIVERYMAN" (Java enum name) or "deliveryman" (lowercase) stored in MongoDB
         Query query = new Query(
                 Criteria.where("role").regex(Pattern.compile("^deliveryman$", Pattern.CASE_INSENSITIVE)));
+        if (available != null) {
+            query.addCriteria(Criteria.where("isAvailable").is(available));
+        }
         return authMongoTemplate.find(query, Deliveryman.class, "users");
     }
 }

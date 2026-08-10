@@ -12,6 +12,7 @@ export interface AuthResult {
 
 interface AuthContextValue {
   user: AppUser | null;
+  token: string | null;
   isLoggedIn: boolean;
   role: UserRole | null;
   isCheckingSession: boolean;
@@ -34,21 +35,23 @@ function roleFromSecretCode(code: string): UserRole | null {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
   const [isCheckingSession, setIsCheckingSession] = useState(true);
 
   // Restore session from stored token
   useEffect(() => {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) {
+    const stored = localStorage.getItem(TOKEN_KEY);
+    if (!stored) {
       setIsCheckingSession(false);
       return;
     }
     authApi
-      .me(token)
+      .me(stored)
       .then(apiUser => setUser(apiUser))
       .catch(() => {
         // Token invalid or backend offline — start logged out
         localStorage.removeItem(TOKEN_KEY);
+        setToken(null);
       })
       .finally(() => setIsCheckingSession(false));
   }, []);
@@ -57,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const data = await authApi.login({ email, password });
       localStorage.setItem(TOKEN_KEY, data.token);
+      setToken(data.token);
       setUser(data.user);
       return { success: true };
     } catch (e) {
@@ -86,6 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         secretCode: secretCode.trim() || undefined,
       });
       localStorage.setItem(TOKEN_KEY, data.token);
+      setToken(data.token);
       setUser(data.user);
       return { success: true };
     } catch (e) {
@@ -102,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
+    setToken(null);
     setUser(null);
   }, []);
 
@@ -112,6 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user,
+      token,
       isLoggedIn: user !== null,
       role: user?.role ?? null,
       isCheckingSession,

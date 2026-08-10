@@ -4,6 +4,7 @@ import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 /**
  * Read/write projection of the User document owned by the auth-service.
@@ -17,9 +18,16 @@ public class User {
     private String id;
 
     private String name;
+
+    @Indexed
     private String email;
+
     private String phone;
+
     private String role;
 
+    private String restaurantId;
+
+    @Field("isAvailable")
     private Boolean isAvailable;
 }

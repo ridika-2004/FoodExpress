@@ -44,7 +44,7 @@ public class DeliveryController {
     // ── Deliverymen ───────────────────────────────────────────
 
     @GetMapping("/deliverymen")
-    public List<Deliveryman> getDeliverymen() {
-        return deliveryService.getDeliverymen();
+    public List<Deliveryman> getDeliverymen(@RequestParam(required = false) Boolean available) {
+        return deliveryService.getDeliverymen(available);
     }
 }

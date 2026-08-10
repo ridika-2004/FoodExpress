@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { allOrders } from '../data/mockData';
 import { useAuth } from '../context/AuthContext';
+import * as userApi from '../api/userApi';
 import { Bike, Clock, CheckCircle, MapPin, User } from 'lucide-react';
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
@@ -13,17 +14,55 @@ const statusConfig: Record<string, { label: string; color: string; bg: string }>
 };
 
 export default function DeliverymanDashboardPage() {
-  const { user, updateUser } = useAuth();
+  const { user, token, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
+  const [isTogglingAvailability, setIsTogglingAvailability] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState<string | null>(null);
 
   const myOrders = allOrders.filter(o => o.deliverymanId === user?.id);
   const activeOrders = myOrders.filter(o => !['delivered', 'cancelled'].includes(o.status));
   const historyOrders = myOrders.filter(o => ['delivered', 'cancelled'].includes(o.status));
   const displayOrders = activeTab === 'active' ? activeOrders : historyOrders;
 
-  const toggleAvailability = () => {
-    if (user) {
-      updateUser({ isAvailable: !user.isAvailable });
+  // Sync availability from the user-service on mount so the toggle reflects
+  // the persisted state (it may have been changed from another device).
+  useEffect(() => {
+    if (!token || user?.role !== 'deliveryman') return;
+    let cancelled = false;
+    userApi
+      .getMyAvailability(token)
+      .then(me => {
+        if (!cancelled) updateUser({ isAvailable: me.isAvailable ?? false });
+      })
+      .catch(() => {
+        /* offline or unauthorized — keep whatever the session has */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, user?.role, updateUser]);
+
+  const toggleAvailability = async () => {
+    if (!user || !token || isTogglingAvailability) return;
+
+    const next = !user.isAvailable;
+    setAvailabilityError(null);
+    setIsTogglingAvailability(true);
+    // Optimistic update — rolled back if the request fails.
+    updateUser({ isAvailable: next });
+
+    try {
+      const updated = await userApi.setMyAvailability(token, next);
+      updateUser({ isAvailable: updated.isAvailable ?? next });
+    } catch (e) {
+      updateUser({ isAvailable: !next });
+      setAvailabilityError(
+        e instanceof userApi.ApiError
+          ? e.message
+          : "Can't reach the user service. Please try again.",
+      );
+    } finally {
+      setIsTogglingAvailability(false);
     }
   };
 
@@ -67,21 +106,31 @@ export default function DeliverymanDashboardPage() {
             </div>
             <p className="text-sm text-foreground-muted mt-1">{user?.email} · {user?.phone}</p>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-foreground-muted font-medium">Available</span>
-            <button
-              onClick={toggleAvailability}
-              className={`relative w-12 h-7 rounded-full transition-all duration-300 cursor-pointer ${
-                user?.isAvailable ? 'bg-primary' : 'bg-gray-300'
-              }`}
-              aria-label="Toggle availability"
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-sm transition-transform duration-300 ${
-                  user?.isAvailable ? 'translate-x-5' : 'translate-x-0'
+          <div className="flex flex-col items-start sm:items-end gap-1">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-foreground-muted font-medium">
+                {user?.isAvailable ? 'Available' : 'Unavailable'}
+              </span>
+              <button
+                onClick={toggleAvailability}
+                disabled={isTogglingAvailability}
+                role="switch"
+                aria-checked={!!user?.isAvailable}
+                className={`relative w-12 h-7 rounded-full transition-all duration-300 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+                  user?.isAvailable ? 'bg-primary' : 'bg-gray-300'
                 }`}
-              />
-            </button>
+                aria-label="Toggle availability"
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-sm transition-transform duration-300 ${
+                    user?.isAvailable ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+            {availabilityError && (
+              <p className="text-xs text-red-600">{availabilityError}</p>
+            )}
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, Phone, Eye, EyeOff, ArrowRight, ChefHat, Bike, UserCircle, Store, KeyRound, Check, Circle } from 'lucide-react';
+import { Mail, Lock, User, Phone, Eye, EyeOff, ArrowRight, Bike, UserCircle, Store, KeyRound, Check, Circle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import type { UserRole } from '../data/mockData';
 
