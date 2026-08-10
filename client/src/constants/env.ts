@@ -6,42 +6,58 @@
 export const env = {
   /** App display name */
   APP_NAME: import.meta.env.VITE_APP_NAME ?? 'FoodExpress',
+
   /** App meta description */
   APP_DESCRIPTION:
     import.meta.env.VITE_APP_DESCRIPTION ??
     'FoodExpress - Your favorite food, delivered fast.',
+
   /** Support email shown in the footer and contact pages */
-  SUPPORT_EMAIL: import.meta.env.VITE_SUPPORT_EMAIL ?? 'support@foodexpress.com',
+  SUPPORT_EMAIL:
+    import.meta.env.VITE_SUPPORT_EMAIL ?? 'support@foodexpress.com',
+
   /** Support phone number shown in the footer */
-  SUPPORT_PHONE: import.meta.env.VITE_SUPPORT_PHONE ?? '+1 (555) 000-0000',
+  SUPPORT_PHONE:
+    import.meta.env.VITE_SUPPORT_PHONE ?? '+1 (555) 000-0000',
 
   /** Dev server port */
   PORT: import.meta.env.VITE_PORT ?? '5173',
+
   /** Whether to allow all hosts in dev */
   ALLOWED_HOSTS: import.meta.env.VITE_ALLOWED_HOSTS === 'true',
 
   /** Base URL for the avatar generation API */
   AVATAR_API_URL:
-    import.meta.env.VITE_AVATAR_API_URL ?? 'https://ui-avatars.com/api',
+    import.meta.env.VITE_AVATAR_API_URL ??
+    'https://ui-avatars.com/api',
+
   /** Base URL for the Spring Boot authentication service */
   AUTH_API_URL:
-    import.meta.env.VITE_AUTH_API_URL ?? 'http://localhost:9001/api/auth',
+    import.meta.env.VITE_AUTH_API_URL ??
+    'http://localhost:9001/api/auth',
+
   /** Base URL for the Spring Boot restaurant service */
   RESTAURANT_API_URL:
-    import.meta.env.VITE_RESTAURANT_API_URL ?? 'http://localhost:9002/api/restaurants',
+    import.meta.env.VITE_RESTAURANT_API_URL ??
+    'http://localhost:9002/api/restaurants',
+
+  /** Base URL for the Spring Boot cart service */
   CART_API_URL:
-  import.meta.env.VITE_CART_API_URL ?? "http://localhost:9003/api/cart",
+    import.meta.env.VITE_CART_API_URL ??
+    'http://localhost:9003/api/cart',
+
+  /** Base URL for the Spring Boot order service */
+  ORDER_API_URL:
+    import.meta.env.VITE_ORDER_API_URL ??
+    'http://localhost:9004/api/orders',
+
   /** Google Fonts CSS URL */
   GOOGLE_FONTS_URL:
-    import.meta.env.VITE_GOOGLE_FONTS_URL ?? 'https://fonts.googleapis.com',
+    import.meta.env.VITE_GOOGLE_FONTS_URL ??
+    'https://fonts.googleapis.com',
+
   /** Google Fonts static asset CDN */
   GOOGLE_FONTS_STATIC_URL:
-    import.meta.env.VITE_GOOGLE_FONTS_STATIC_URL ?? 'https://fonts.gstatic.com',
-
-  /** Default delivery fee in pesos */
-  DELIVERY_FEE: Number(import.meta.env.VITE_DELIVERY_FEE ?? 25),
-  /** Orders above this amount get free delivery */
-  FREE_DELIVERY_THRESHOLD: Number(
-    import.meta.env.VITE_FREE_DELIVERY_THRESHOLD ?? 500,
-  ),
+    import.meta.env.VITE_GOOGLE_FONTS_STATIC_URL ??
+    'https://fonts.gstatic.com',
 } as const;
