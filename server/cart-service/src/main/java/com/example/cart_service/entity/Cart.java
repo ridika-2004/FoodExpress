@@ -28,11 +28,4 @@ public class Cart {
 
     private List<CartItem> items;
 
-    private Integer itemCount;
-
-    private Double subtotal;
-
-    private Double deliveryFee;
-
-    private Double total;
 }

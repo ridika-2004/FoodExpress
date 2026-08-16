@@ -22,9 +22,6 @@ public class CartService {
 
     private final CartRepository cartRepository;
 
-    private static final double DELIVERY_FEE = 60.0;
-    private static final double FREE_DELIVERY_THRESHOLD = 500.0;
-
     // Add item to cart
     public CartResponse addItem(CartRequest request) {
 
@@ -37,7 +34,7 @@ public class CartService {
                                 .items(new ArrayList<>())
                                 .build());
 
-        // Different restaurant -> clear cart
+        // Different restaurant -> replace existing cart
         if (cart.getRestaurantId() != null &&
                 !cart.getRestaurantId().equals(request.getRestaurantId())) {
 
@@ -73,8 +70,6 @@ public class CartService {
             cart.getItems().add(cartItem);
         }
 
-        calculateTotals(cart);
-
         Cart savedCart = cartRepository.save(cart);
 
         return mapToResponse(savedCart);
@@ -90,15 +85,21 @@ public class CartService {
     }
 
     // Update quantity
-    public CartResponse updateQuantity(String userId, String menuItemId, Integer quantity) {
+    public CartResponse updateQuantity(
+            String userId,
+            String menuItemId,
+            Integer quantity) {
 
         Cart cart = cartRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Cart not found"));
 
         cart.getItems().removeIf(item -> {
+
             if (item.getMenuItem().getId().equals(menuItemId)) {
-                if (quantity <= 0)
+
+                if (quantity <= 0) {
                     return true;
+                }
 
                 item.setQuantity(quantity);
             }
@@ -106,21 +107,20 @@ public class CartService {
             return false;
         });
 
-        calculateTotals(cart);
-
         return mapToResponse(cartRepository.save(cart));
     }
 
     // Remove item
-    public CartResponse removeItem(String userId, String menuItemId) {
+    public CartResponse removeItem(
+            String userId,
+            String menuItemId) {
 
         Cart cart = cartRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Cart not found"));
 
         cart.getItems()
-                .removeIf(item -> item.getMenuItem().getId().equals(menuItemId));
-
-        calculateTotals(cart);
+                .removeIf(item ->
+                        item.getMenuItem().getId().equals(menuItemId));
 
         return mapToResponse(cartRepository.save(cart));
     }
@@ -133,36 +133,10 @@ public class CartService {
 
         cart.getItems().clear();
 
-        calculateTotals(cart);
-
         cartRepository.save(cart);
     }
 
-    // -------------------- Helper Methods --------------------
-
-    private void calculateTotals(Cart cart) {
-
-        int itemCount = 0;
-        double subtotal = 0;
-
-        for (CartItem item : cart.getItems()) {
-
-            itemCount += item.getQuantity();
-
-            subtotal += item.getMenuItem().getPrice()
-                    * item.getQuantity();
-        }
-
-        double deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD || subtotal == 0
-                ? 0
-                : DELIVERY_FEE;
-
-        cart.setItemCount(itemCount);
-        cart.setSubtotal(subtotal);
-        cart.setDeliveryFee(deliveryFee);
-        cart.setTotal(subtotal + deliveryFee);
-    }
-
+    // Convert entity to response
     private CartResponse mapToResponse(Cart cart) {
 
         List<CartItemResponse> items = cart.getItems()
@@ -179,10 +153,6 @@ public class CartService {
                 .restaurantId(cart.getRestaurantId())
                 .restaurantName(cart.getRestaurantName())
                 .items(items)
-                .itemCount(cart.getItemCount())
-                .subtotal(cart.getSubtotal())
-                .deliveryFee(cart.getDeliveryFee())
-                .total(cart.getTotal())
                 .build();
     }
 }

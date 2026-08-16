@@ -1,0 +1,23 @@
+server:
+  port: 9004
+
+spring:
+  application:
+    name: DELIVERY-SERVICE
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+  instance:
+    hostname: localhost
+    prefer-ip-address: true

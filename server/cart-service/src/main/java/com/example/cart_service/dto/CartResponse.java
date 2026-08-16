@@ -23,11 +23,4 @@ public class CartResponse {
 
     private List<CartItemResponse> items;
 
-    private Integer itemCount;
-
-    private Double subtotal;
-
-    private Double deliveryFee;
-
-    private Double total;
 }

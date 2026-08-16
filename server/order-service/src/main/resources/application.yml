@@ -1,0 +1,26 @@
+server:
+  port: 9006
+
+spring:
+  application:
+    name: ORDER-SERVICE
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+  data:
+    mongodb:
+      uri: mongodb+srv://zannatuladonsabiha_db_user:7qaIAdkImgkTShuC@cluster0.l0wixyx.mongodb.net/foodexpress_order?retryWrites=true&w=majority&appName=Cluster0
+
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+  instance:
+    hostname: localhost

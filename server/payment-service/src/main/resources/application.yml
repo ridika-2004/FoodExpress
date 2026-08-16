@@ -1,0 +1,25 @@
+server:
+  port: 9005
+
+spring:
+  application:
+    name: PAYMENT-SERVICE
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+  mongodb:
+    uri: mongodb+srv://zannatuladonsabiha_db_user:7qaIAdkImgkTShuC@cluster0.l0wixyx.mongodb.net/foodexpress_payment?retryWrites=true&w=majority&appName=Cluster0
+
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+  instance:
+    hostname: localhost

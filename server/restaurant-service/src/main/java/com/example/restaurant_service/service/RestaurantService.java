@@ -9,7 +9,9 @@ import com.example.restaurant_service.entity.Restaurant;
 import com.example.restaurant_service.repository.MenuItemRepository;
 import com.example.restaurant_service.repository.RestaurantRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -21,8 +23,13 @@ public class RestaurantService {
     private final RestaurantRepository restaurantRepository;
     private final MenuItemRepository menuItemRepository;
 
-    public RestaurantResponse createRestaurant(RestaurantRequest request) {
+    public RestaurantResponse createRestaurant(RestaurantRequest request, String ownerId) {
+        if (restaurantRepository.findByOwnerId(ownerId).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Owner already has a restaurant");
+        }
+        
         Restaurant restaurant = Restaurant.builder()
+                .ownerId(ownerId)
                 .name(request.getName())
                 .address(request.getAddress())
                 .contact(request.getContact())
@@ -51,14 +58,25 @@ public class RestaurantService {
 
     public RestaurantResponse getRestaurantById(String id) {
         Restaurant restaurant = restaurantRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
         List<MenuItem> menuItems = menuItemRepository.findByRestaurantId(restaurant.getRestaurantId());
         return mapToRestaurantResponse(restaurant, menuItems);
     }
 
-    public MenuItemResponse addMenuItem(String restaurantId, MenuItemRequest request) {
+    public RestaurantResponse getRestaurantByOwnerId(String ownerId) {
+        Restaurant restaurant = restaurantRepository.findByOwnerId(ownerId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found for this owner"));
+        List<MenuItem> menuItems = menuItemRepository.findByRestaurantId(restaurant.getRestaurantId());
+        return mapToRestaurantResponse(restaurant, menuItems);
+    }
+
+    public MenuItemResponse addMenuItem(String restaurantId, MenuItemRequest request, String ownerId) {
         Restaurant restaurant = restaurantRepository.findById(restaurantId)
-                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Restaurant not found"));
+                
+        if (!ownerId.equals(restaurant.getOwnerId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: You do not own this restaurant");
+        }
 
         MenuItem menuItem = MenuItem.builder()
                 .restaurantId(restaurantId)
