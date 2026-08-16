@@ -1,0 +1,1374 @@
+{
+  "info": {
+    "_postman_id": "ebf102da-4464-409a-b7f4-ad943ac642d0",
+    "name": "FoodExpress API - Sabiha + ALL RabbitMQ",
+    "description": "Original FoodExpress API Gateway collection, updated for fresh Sabiha test users and all RabbitMQ checks. Included flows: Order→Cart (order.created), Order→Delivery (order.confirmed), Delivery→Order (delivery.status.changed), Payment→Order (payment.success). Use API Gateway at http://localhost:8080. Run folders in order.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00. READ ME - RabbitMQ Test Sequence",
+      "item": [
+        {
+          "name": "Test Sequence Instructions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8080",
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "RUN IN ORDER:\n\n01 Authentication: Register/Login Sabiha, Sabiha Restaurant Owner, Sabiha Deliveryman.\n02 Restaurant: Create restaurant + menu.\n03 Cart: Add Item → Get Cart. SKIP legacy manual Clear Cart.\n04 Order: Place Order → RabbitMQ Verify 1 (cart auto-cleared). Then CONFIRMED → RabbitMQ Verify 2A (delivery auto-created). SKIP legacy manual OUT_FOR_DELIVERY and DELIVERED Order requests.\n05 Payment: Create Payment → SUCCESS → RabbitMQ Verify 3 (Order payment auto-synced).\n06 Delivery: SKIP legacy manual Create Delivery Tracking. Assign deliveryman → out_for_delivery → verify Order → delivered → verify Order.\n\nRabbitMQ dashboard: http://localhost:15672 (guest / guest)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "01. Authentication - 3 Roles",
+      "item": [
+        {
+          "name": "Register Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "http://localhost:8080/api/auth/register",
+            "description": "Creates a CUSTOMER account and stores customerToken + userId when returned.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sabiha\",\n  \"email\": \"sabiha.customer.rabbitmq@example.com\",\n  \"phone\": \"+8801710000001\",\n  \"password\": \"Password123!\",\n  \"secretCode\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let r = {}; try { r = pm.response.json(); } catch (e) {}",
+                  "const token = r.token || r.accessToken || r.jwt || r.access_token;",
+                  "if (token) pm.collectionVariables.set('customerToken', token);",
+                  "const u = r.user || r.data || r;",
+                  "const id = u.id || u._id || u.userId;",
+                  "if (id) pm.collectionVariables.set('userId', id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "http://localhost:8080/api/auth/login",
+            "description": "Stores the CUSTOMER JWT in customerToken.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"sabiha.customer.rabbitmq@example.com\",\n  \"password\": \"Password123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let r = {}; try { r = pm.response.json(); } catch (e) {}",
+                  "const token = r.token || r.accessToken || r.jwt || r.access_token;",
+                  "if (token) pm.collectionVariables.set('customerToken', token);",
+                  "const u = r.user || r.data || r;",
+                  "const id = u.id || u._id || u.userId;",
+                  "if (id) pm.collectionVariables.set('userId', id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Customer Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8080/api/auth/me",
+            "description": "Should identify the logged-in CUSTOMER account.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Register Restaurant Owner",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "http://localhost:8080/api/auth/register",
+            "description": "secretCode=restaurant creates the RESTAURANT role. Stores ownerToken + ownerId.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sabiha Restaurant Owner\",\n  \"email\": \"sabiha.owner.rabbitmq@example.com\",\n  \"phone\": \"+8801710000002\",\n  \"password\": \"Password123!\",\n  \"secretCode\": \"restaurant\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let r = {}; try { r = pm.response.json(); } catch (e) {}",
+                  "const token = r.token || r.accessToken || r.jwt || r.access_token;",
+                  "if (token) pm.collectionVariables.set('ownerToken', token);",
+                  "const u = r.user || r.data || r;",
+                  "const id = u.id || u._id || u.userId;",
+                  "if (id) pm.collectionVariables.set('ownerId', id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Restaurant Owner",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "http://localhost:8080/api/auth/login",
+            "description": "Stores the RESTAURANT owner's JWT in ownerToken.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"sabiha.owner.rabbitmq@example.com\",\n  \"password\": \"Password123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let r = {}; try { r = pm.response.json(); } catch (e) {}",
+                  "const token = r.token || r.accessToken || r.jwt || r.access_token;",
+                  "if (token) pm.collectionVariables.set('ownerToken', token);",
+                  "const u = r.user || r.data || r;",
+                  "const id = u.id || u._id || u.userId;",
+                  "if (id) pm.collectionVariables.set('ownerId', id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Restaurant Owner Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8080/api/auth/me",
+            "description": "Use this to verify the token belongs to a RESTAURANT-role user before creating a restaurant or menu item.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Register Deliveryman",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "http://localhost:8080/api/auth/register",
+            "description": "secretCode=delivery creates the DELIVERYMAN role. Stores deliverymanToken + deliverymanId.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sabiha Deliveryman\",\n  \"email\": \"sabiha.delivery.rabbitmq@example.com\",\n  \"phone\": \"+8801710000003\",\n  \"password\": \"Password123!\",\n  \"secretCode\": \"delivery\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let r = {}; try { r = pm.response.json(); } catch (e) {}",
+                  "const token = r.token || r.accessToken || r.jwt || r.access_token;",
+                  "if (token) pm.collectionVariables.set('deliverymanToken', token);",
+                  "const u = r.user || r.data || r;",
+                  "const id = u.id || u._id || u.userId;",
+                  "if (id) pm.collectionVariables.set('deliverymanId', id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Deliveryman",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "http://localhost:8080/api/auth/login",
+            "description": "Stores the DELIVERYMAN JWT in deliverymanToken.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"sabiha.delivery.rabbitmq@example.com\",\n  \"password\": \"Password123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let r = {}; try { r = pm.response.json(); } catch (e) {}",
+                  "const token = r.token || r.accessToken || r.jwt || r.access_token;",
+                  "if (token) pm.collectionVariables.set('deliverymanToken', token);",
+                  "const u = r.user || r.data || r;",
+                  "const id = u.id || u._id || u.userId;",
+                  "if (id) pm.collectionVariables.set('deliverymanId', id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Deliveryman Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8080/api/auth/me",
+            "description": "Should identify the logged-in DELIVERYMAN account.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{deliverymanToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. Restaurant Service - OWNER TOKEN",
+      "item": [
+        {
+          "name": "Create Restaurant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "http://localhost:8080/api/restaurants",
+            "description": "RESTAURANT role required. Uses ownerToken, not customerToken.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sabiha's Pizza House\",\n  \"address\": \"Dhaka, Bangladesh\",\n  \"contact\": \"01710000002\",\n  \"image\": \"https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&h=400&fit=crop\",\n  \"cuisine\": \"Italian • Pizza\",\n  \"rating\": 4.8,\n  \"deliveryTime\": \"15-25 min\",\n  \"deliveryFee\": \"৳49\",\n  \"minOrder\": \"৳200\",\n  \"isOpen\": true,\n  \"isPromoted\": true,\n  \"categories\": [\"Pizza\", \"Pasta\", \"Italian\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let r = {}; try { r = pm.response.json(); } catch (e) {}",
+                  "const obj = r.restaurant || r.data || r;",
+                  "const id = obj.restaurantId || obj.id || obj._id;",
+                  "if (id) pm.collectionVariables.set('restaurantId', id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get My Restaurant",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8080/api/restaurants/my-restaurant",
+            "description": "RESTAURANT role required.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Restaurants",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8080/api/restaurants",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Get Restaurant by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8080/api/restaurants/{{restaurantId}}",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Add Menu Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "http://localhost:8080/api/restaurants/{{restaurantId}}/menu",
+            "description": "RESTAURANT role required. Uses ownerToken.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sabiha Special Pepperoni\",\n  \"description\": \"Double pepperoni, mozzarella cheese, signature marinara\",\n  \"price\": 349.0,\n  \"category\": \"Pizza\",\n  \"image\": \"https://images.unsplash.com/photo-1628840042765-356cda07504e?w=400&h=300&fit=crop\",\n  \"isPopular\": true,\n  \"isVegetarian\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let r = {}; try { r = pm.response.json(); } catch (e) {}",
+                  "const obj = r.menuItem || r.data || r;",
+                  "const id = obj.menuItemId || obj.id || obj._id;",
+                  "if (id) pm.collectionVariables.set('menuItemId', id);",
+                  "if (obj.name) pm.collectionVariables.set('menuItemName', obj.name);",
+                  "if (obj.image) pm.collectionVariables.set('menuItemImage', obj.image);",
+                  "if (obj.price !== undefined && obj.price !== null) pm.collectionVariables.set('menuItemPrice', obj.price);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Restaurant Menu",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8080/api/restaurants/{{restaurantId}}/menu",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Cart Service - CUSTOMER TOKEN",
+      "item": [
+        {
+          "name": "Add Item to Cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "http://localhost:8080/api/cart/items",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"restaurantId\": \"{{restaurantId}}\",\n  \"restaurantName\": \"Sabiha's Pizza House\",\n  \"menuItemId\": \"{{menuItemId}}\",\n  \"menuItemName\": \"{{menuItemName}}\",\n  \"menuItemImage\": \"{{menuItemImage}}\",\n  \"menuItemPrice\": {{menuItemPrice}},\n  \"quantity\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Cart",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8080/api/cart/{{userId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "RabbitMQ pre-check. Run before Place Order: cart should contain Sabiha's menu item."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Cart exists before order', function () { pm.expect(pm.response.code).to.eql(200); });",
+                  "pm.test('Cart contains menu item', function () { pm.expect(pm.response.text()).to.include(pm.collectionVariables.get('menuItemId')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Item Quantity",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": "http://localhost:8080/api/cart/{{userId}}/items/{{menuItemId}}?quantity=5",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Remove Item from Cart",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "http://localhost:8080/api/cart/{{userId}}/items/{{menuItemId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "LEGACY Manual Clear Cart - SKIP for RabbitMQ Test",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "http://localhost:8080/api/cart/{{userId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "SKIP during RabbitMQ test. Order Service should publish order.created and Cart Service should clear it automatically."
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Order Service - GATEWAY /api/orders",
+      "item": [
+        {
+          "name": "Place Order (Checkout)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "http://localhost:8080/api/orders",
+            "description": "RabbitMQ Test 1 trigger: after Order is saved, Order Service publishes order.created; Cart Service should auto-clear Sabiha's cart.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"customerName\": \"Sabiha\",\n  \"phone\": \"+8801710000001\",\n  \"deliveryAddress\": \"Dhaka, Bangladesh\",\n  \"restaurantId\": \"{{restaurantId}}\",\n  \"restaurantName\": \"Sabiha's Pizza House\",\n  \"items\": [\n    {\n      \"menuItemId\": \"{{menuItemId}}\",\n      \"menuItemName\": \"{{menuItemName}}\",\n      \"menuItemImage\": \"{{menuItemImage}}\",\n      \"menuItemPrice\": {{menuItemPrice}},\n      \"quantity\": 2\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let r = {}; try { r = pm.response.json(); } catch (e) {}",
+                  "const obj = r.order || r.data || r;",
+                  "const id = obj.orderId || obj.id || obj._id;",
+                  "if (id) pm.collectionVariables.set('orderId', id);",
+                  "const total = obj.total !== undefined ? obj.total : (obj.totalAmount !== undefined ? obj.totalAmount : obj.orderTotal);",
+                  "if (total !== undefined && total !== null) pm.collectionVariables.set('orderTotal', total);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "RabbitMQ Verify 1 - Cart Auto-Cleared",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8080/api/cart/{{userId}}",
+            "description": "PASS if cart is empty or removed. Do not manually clear it first.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Cart cleared or removed', function () { pm.expect(pm.response.code).to.be.oneOf([200,404]); });",
+                  "if (pm.response.code === 200) {",
+                  "  let r={}; try{r=pm.response.json();}catch(e){}",
+                  "  const obj=r.cart||r.data||r;",
+                  "  const items=Array.isArray(obj)?obj:(obj.items||obj.cartItems||[]);",
+                  "  pm.test('Cart has zero items', function () { pm.expect(items.length).to.eql(0); });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Order by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8080/api/orders/{{orderId}}",
+            "description": "Customer token.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User Orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8080/api/orders/user/{{userId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Restaurant Orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8080/api/orders/restaurant/{{restaurantId}}",
+            "description": "Owner token.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Order Status - CONFIRMED",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": "http://localhost:8080/api/orders/{{orderId}}/status?status=CONFIRMED",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "RabbitMQ Test 2A trigger: after CONFIRMED is saved, Order Service publishes order.confirmed; Delivery Service should auto-create delivery tracking."
+          }
+        },
+        {
+          "name": "RabbitMQ Verify 2A - Delivery Auto-Created",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8080/api/delivery/orders?status=confirmed",
+            "description": "PASS if current orderId is present without manually POSTing /api/delivery/orders.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{deliverymanToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Delivery endpoint responded', function () { pm.expect(pm.response.code).to.eql(200); });",
+                  "const oid=pm.collectionVariables.get('orderId');",
+                  "pm.test('Delivery auto-created by RabbitMQ', function () { pm.expect(pm.response.text()).to.include(oid); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Order Status - PREPARING",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": "http://localhost:8080/api/orders/{{orderId}}/status?status=PREPARING",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "LEGACY Manual Order OUT_FOR_DELIVERY - SKIP for RabbitMQ Test",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": "http://localhost:8080/api/orders/{{orderId}}/status?status=OUT_FOR_DELIVERY",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "SKIP during RabbitMQ test. Delivery Service should publish delivery.status.changed and Order Service should update automatically."
+          }
+        },
+        {
+          "name": "LEGACY Manual Order DELIVERED - SKIP for RabbitMQ Test",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": "http://localhost:8080/api/orders/{{orderId}}/status?status=DELIVERED",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "SKIP during RabbitMQ test. Delivery Service should publish delivery.status.changed and Order Service should update automatically."
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. Payment Service - GATEWAY /api/payments",
+      "item": [
+        {
+          "name": "Create Payment - GCASH",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "http://localhost:8080/api/payments",
+            "description": "Uses the plural /api/payments path. Gateway must route /api/payments/** to Payment Service.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"userId\": \"{{userId}}\",\n  \"amount\": {{orderTotal}},\n  \"paymentMethod\": \"GCASH\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let r = {}; try { r = pm.response.json(); } catch (e) {}",
+                  "const obj = r.payment || r.data || r;",
+                  "const id = obj.paymentId || obj.id || obj._id;",
+                  "if (id) pm.collectionVariables.set('paymentId', id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Payment by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8080/api/payments/{{paymentId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Payment by Order ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8080/api/payments/order/{{orderId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User Payments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8080/api/payments/user/{{userId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Payment Status - SUCCESS",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "http://localhost:8080/api/payments/{{paymentId}}/status",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentStatus\": \"SUCCESS\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "RabbitMQ Test 3 trigger: after Payment is saved as SUCCESS, Payment Service publishes payment.success; Order Service should auto-sync payment information."
+          }
+        },
+        {
+          "name": "RabbitMQ Verify 3 - Order Payment Auto-Synced",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8080/api/orders/{{orderId}}",
+            "description": "PASS if Order now exposes successful payment information, e.g. paymentStatus/paymentState=SUCCESS, paid/isPaid=true, or paymentId.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Order read succeeded', function () { pm.expect(pm.response.code).to.eql(200); });",
+                  "let r={}; try{r=pm.response.json();}catch(e){}",
+                  "const obj=r.order||r.data||r;",
+                  "const ps=String(obj.paymentStatus||obj.paymentState||obj.payment_status||'').toUpperCase();",
+                  "const paid=(obj.paid===true||obj.isPaid===true);",
+                  "const pid=obj.paymentId||obj.payment_id;",
+                  "pm.test('Payment auto-synced through RabbitMQ', function () { pm.expect(ps==='SUCCESS'||paid||!!pid).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06. Delivery Service - DELIVERYMAN / OWNER TOKENS",
+      "item": [
+        {
+          "name": "LEGACY Manual Create Delivery Tracking - SKIP for RabbitMQ Test",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "http://localhost:8080/api/delivery/orders",
+            "description": "SKIP during RabbitMQ test. CONFIRMED Order should already create/sync Delivery through order.confirmed.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{orderId}}\",\n  \"restaurantId\": \"{{restaurantId}}\",\n  \"restaurantName\": \"Sabiha's Pizza House\",\n  \"restaurantImage\": \"{{menuItemImage}}\",\n  \"items\": [\n    {\n      \"menuItemId\": \"{{menuItemId}}\",\n      \"name\": \"{{menuItemName}}\",\n      \"price\": {{menuItemPrice}},\n      \"quantity\": 2,\n      \"image\": \"{{menuItemImage}}\"\n    }\n  ],\n  \"total\": {{orderTotal}},\n  \"status\": \"confirmed\",\n  \"deliveryAddress\": \"Dhaka, Bangladesh\",\n  \"paymentMethod\": \"GCASH\",\n  \"estimatedDelivery\": \"30 min\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Delivery Orders - confirmed",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8080/api/delivery/orders?status=confirmed",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{deliverymanToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Available Deliverymen",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8080/api/delivery/deliverymen?available=true",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{deliverymanToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Assign Deliveryman",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "http://localhost:8080/api/delivery/orders/{{orderId}}/assign",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{deliverymanToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deliverymanId\": \"{{deliverymanId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Update Delivery Status - out_for_delivery",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "http://localhost:8080/api/delivery/orders/{{orderId}}/status",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{deliverymanToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"out_for_delivery\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "RabbitMQ Test 2B trigger: saves out_for_delivery, publishes delivery.status.changed; Order Service should auto-update to OUT_FOR_DELIVERY."
+          }
+        },
+        {
+          "name": "RabbitMQ Verify 2B - Order = OUT_FOR_DELIVERY",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8080/api/orders/{{orderId}}",
+            "description": "PASS if Order is OUT_FOR_DELIVERY without manually updating Order status.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Order read succeeded', function () { pm.expect(pm.response.code).to.eql(200); });",
+                  "let r={}; try{r=pm.response.json();}catch(e){}",
+                  "const obj=r.order||r.data||r;",
+                  "const st=String(obj.status||obj.orderStatus||'').toUpperCase();",
+                  "pm.test('Order auto-synced OUT_FOR_DELIVERY', function () { pm.expect(st).to.eql('OUT_FOR_DELIVERY'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Delivery Status - delivered",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "http://localhost:8080/api/delivery/orders/{{orderId}}/status",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{deliverymanToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"delivered\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "RabbitMQ Test 2B trigger: saves delivered, publishes delivery.status.changed; Order Service should auto-update to DELIVERED."
+          }
+        },
+        {
+          "name": "RabbitMQ Verify 2B - Order = DELIVERED",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "http://localhost:8080/api/orders/{{orderId}}",
+            "description": "PASS if Order is DELIVERED without manually updating Order status.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Order read succeeded', function () { pm.expect(pm.response.code).to.eql(200); });",
+                  "let r={}; try{r=pm.response.json();}catch(e){}",
+                  "const obj=r.order||r.data||r;",
+                  "const st=String(obj.status||obj.orderStatus||'').toUpperCase();",
+                  "pm.test('Order auto-synced DELIVERED', function () { pm.expect(st).to.eql('DELIVERED'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "customerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ownerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "deliverymanToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ownerId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "deliverymanId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "restaurantId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "menuItemId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "menuItemName",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "menuItemImage",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "menuItemPrice",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "orderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "orderTotal",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "paymentId",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
